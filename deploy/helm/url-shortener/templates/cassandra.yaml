@@ -1,0 +1,162 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.cassandra.service.headlessName }}
+  labels:
+    {{- include "url-shortener.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cassandra
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "url-shortener.selectorLabels" (dict "component" "cassandra") | nindent 4 }}
+  ports:
+    - name: cql
+      port: {{ .Values.cassandra.service.cqlPort }}
+      targetPort: cql
+    - name: internode
+      port: {{ .Values.cassandra.service.internodePort }}
+      targetPort: internode
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.cassandra.service.name }}
+  labels:
+    {{- include "url-shortener.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cassandra
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "url-shortener.selectorLabels" (dict "component" "cassandra") | nindent 4 }}
+  ports:
+    - name: cql
+      port: {{ .Values.cassandra.service.cqlPort }}
+      targetPort: cql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.cassandra.service.name }}
+  labels:
+    {{- include "url-shortener.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cassandra
+    app.kubernetes.io/part-of: url-shortener
+spec:
+  serviceName: {{ .Values.cassandra.service.headlessName }}
+  replicas: {{ .Values.cassandra.replicaCount }}
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: {{ .Values.cassandra.persistence.whenDeleted }}
+    whenScaled: {{ .Values.cassandra.persistence.whenScaled }}
+  selector:
+    matchLabels:
+      {{- include "url-shortener.selectorLabels" (dict "component" "cassandra") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "url-shortener.labels" . | nindent 8 }}
+        app.kubernetes.io/component: cassandra
+        app.kubernetes.io/part-of: url-shortener
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 120
+      securityContext:
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 999
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cassandra
+          image: "{{ .Values.cassandra.image.repository }}:{{ .Values.cassandra.image.tag }}"
+          imagePullPolicy: {{ .Values.cassandra.image.pullPolicy }}
+          ports:
+            - name: cql
+              containerPort: {{ .Values.cassandra.service.cqlPort }}
+            - name: internode
+              containerPort: {{ .Values.cassandra.service.internodePort }}
+          env:
+            - name: CASSANDRA_CLUSTER_NAME
+              value: {{ .Values.cassandra.clusterName | quote }}
+            - name: CASSANDRA_DC
+              value: {{ .Values.cassandra.datacenter | quote }}
+            - name: CASSANDRA_RACK
+              value: {{ .Values.cassandra.rack | quote }}
+            - name: CASSANDRA_ENDPOINT_SNITCH
+              value: GossipingPropertyFileSnitch
+            - name: CASSANDRA_SEEDS
+              value: {{ printf "%s-0.%s.%s.svc.cluster.local" .Values.cassandra.service.name .Values.cassandra.service.headlessName .Release.Namespace | quote }}
+            - name: CASSANDRA_NUM_TOKENS
+              value: {{ .Values.cassandra.numTokens | quote }}
+            - name: CASSANDRA_LISTEN_ADDRESS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CASSANDRA_BROADCAST_ADDRESS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CASSANDRA_RPC_ADDRESS
+              value: 0.0.0.0
+            - name: CASSANDRA_BROADCAST_RPC_ADDRESS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: MAX_HEAP_SIZE
+              value: {{ .Values.cassandra.heapSize | quote }}
+            - name: HEAP_NEWSIZE
+              value: {{ .Values.cassandra.heapNewSize | quote }}
+          resources:
+            {{- toYaml .Values.cassandra.resources | nindent 12 }}
+          startupProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -ec
+                - cqlsh 127.0.0.1 {{ .Values.cassandra.service.cqlPort }} -e 'SELECT release_version FROM system.local'
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -ec
+                - cqlsh 127.0.0.1 {{ .Values.cassandra.service.cqlPort }} -e 'SELECT release_version FROM system.local'
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -ec
+                - cqlsh 127.0.0.1 {{ .Values.cassandra.service.cqlPort }} -e 'SELECT release_version FROM system.local'
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: false
+          volumeMounts:
+            - name: cassandra-data
+              mountPath: /var/lib/cassandra
+  volumeClaimTemplates:
+    - metadata:
+        name: cassandra-data
+        labels:
+          {{- include "url-shortener.labels" . | nindent 10 }}
+          app.kubernetes.io/component: cassandra
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.cassandra.persistence.storageClassName | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.cassandra.persistence.size | quote }}

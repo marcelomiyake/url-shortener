@@ -1,0 +1,6 @@
+.git
+.sonarlint
+**/target
+**/*.log
+.env
+.env.*

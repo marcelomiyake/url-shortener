@@ -1,0 +1,7 @@
+apiVersion: v2
+name: url-shortener
+description: Local URL shortener API, frontend, and Cassandra deployment
+type: application
+version: 0.1.0
+appVersion: "0.2.0"
+kubeVersion: ">=1.27.0-0"

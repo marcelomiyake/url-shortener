@@ -1,0 +1,96 @@
+{{- $contacts := list -}}
+{{- range $index := until (int .Values.cassandra.replicaCount) -}}
+{{- $contacts = append $contacts (printf "cassandra-%d.%s.%s.svc.cluster.local:%d" $index $.Values.cassandra.service.headlessName $.Release.Namespace (int $.Values.cassandra.service.cqlPort)) -}}
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.api.service.name }}
+  labels:
+    {{- include "url-shortener.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "url-shortener.selectorLabels" (dict "component" "api") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.api.service.port }}
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.api.service.name }}
+  labels:
+    {{- include "url-shortener.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: url-shortener
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      {{- include "url-shortener.selectorLabels" (dict "component" "api") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "url-shortener.labels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+        app.kubernetes.io/part-of: url-shortener
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: APP_LISTEN_ADDR
+              value: 0.0.0.0:8080
+            - name: CASSANDRA_CONTACT_POINTS
+              value: {{ join "," $contacts | quote }}
+            - name: CASSANDRA_KEYSPACE
+              value: url_shortener
+            - name: CASSANDRA_LOCAL_DC
+              value: {{ .Values.cassandra.datacenter | quote }}
+            - name: CASSANDRA_REPLICATION_FACTOR
+              value: {{ .Values.cassandra.keyspaceReplicationFactor | quote }}
+            - name: RUST_LOG
+              value: {{ .Values.api.rustLog | quote }}
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+      terminationGracePeriodSeconds: 30

@@ -1,0 +1,8 @@
+The URL shortener is installed as Helm release {{ .Release.Name }} in namespace {{ .Release.Namespace }}.
+
+Port-forward the frontend Service:
+  kubectl --context kind-kind --namespace {{ .Release.Namespace }} port-forward service/{{ .Values.frontend.service.name }} 8080:{{ .Values.frontend.service.port }}
+
+Open http://127.0.0.1:8080
+
+Cassandra PVCs are retained when the StatefulSet is removed, but deleting the namespace deletes its PVC claims. Keep backups outside the namespace for recoverable data.

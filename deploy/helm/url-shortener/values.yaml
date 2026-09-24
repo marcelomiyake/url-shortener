@@ -1,0 +1,65 @@
+api:
+  replicaCount: 2
+  image:
+    repository: url-shortener-api
+    tag: "0.2.0"
+    pullPolicy: IfNotPresent
+  service:
+    name: url-shortener-api
+    port: 8080
+  rustLog: info
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: url-shortener-frontend
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  service:
+    name: url-shortener
+    port: 8080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+cassandra:
+  replicaCount: 3
+  image:
+    repository: cassandra
+    tag: "5.0.9"
+    pullPolicy: IfNotPresent
+  clusterName: url-shortener-local
+  datacenter: datacenter1
+  rack: rack1
+  numTokens: 16
+  heapSize: 1G
+  heapNewSize: 256M
+  keyspaceReplicationFactor: 3
+  service:
+    name: cassandra
+    headlessName: cassandra-headless
+    cqlPort: 9042
+    internodePort: 7000
+  persistence:
+    storageClassName: standard
+    size: 2Gi
+    whenDeleted: Retain
+    whenScaled: Retain
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1536Mi
+    limits:
+      cpu: "2"
+      memory: 3Gi

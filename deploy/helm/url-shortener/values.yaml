@@ -12,9 +12,11 @@ api:
     requests:
       cpu: 100m
       memory: 128Mi
+      ephemeral-storage: 128Mi
     limits:
       cpu: "1"
       memory: 512Mi
+      ephemeral-storage: 512Mi
 
 frontend:
   replicaCount: 2
@@ -29,9 +31,11 @@ frontend:
     requests:
       cpu: 50m
       memory: 64Mi
+      ephemeral-storage: 64Mi
     limits:
       cpu: 250m
       memory: 256Mi
+      ephemeral-storage: 256Mi
 
 cassandra:
   replicaCount: 3
@@ -60,6 +64,8 @@ cassandra:
     requests:
       cpu: 500m
       memory: 1536Mi
+      ephemeral-storage: 256Mi
     limits:
       cpu: "2"
       memory: 3Gi
+      ephemeral-storage: 1Gi

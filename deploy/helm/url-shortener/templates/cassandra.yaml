@@ -112,7 +112,14 @@ spec:
             - name: HEAP_NEWSIZE
               value: {{ .Values.cassandra.heapNewSize | quote }}
           resources:
-            {{- toYaml .Values.cassandra.resources | nindent 12 }}
+            requests:
+              cpu: {{ .Values.cassandra.resources.requests.cpu | quote }}
+              memory: {{ .Values.cassandra.resources.requests.memory | quote }}
+              ephemeral-storage: {{ index .Values.cassandra.resources.requests "ephemeral-storage" | quote }}
+            limits:
+              cpu: {{ .Values.cassandra.resources.limits.cpu | quote }}
+              memory: {{ .Values.cassandra.resources.limits.memory | quote }}
+              ephemeral-storage: {{ index .Values.cassandra.resources.limits "ephemeral-storage" | quote }}
           startupProbe:
             exec:
               command:

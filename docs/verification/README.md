@@ -7,7 +7,7 @@ This directory records browser-quality evidence for the URL Shortener. The exist
 ## Evidence
 
 - [Lighthouse and SEO META verification](lighthouse.md) — production-build browser audit and manual metadata checklist.
-- [SonarQube verification](sonarqube.md) — current re-analysis status and required project-scoped credentials.
+- [SonarQube verification](sonarqube.md) — Cloud scanner configuration and historical local results.
 - [WebMCP evidence](../design/webmcp/evidence.md) — mocked tool integration checks and native-browser verification limits.
 - [Deployment evidence](../design/helm-deployment/evidence.md) — Helm and service verification.
 

@@ -52,7 +52,14 @@ spec:
             - name: http
               containerPort: 8080
           resources:
-            {{- toYaml .Values.frontend.resources | nindent 12 }}
+            requests:
+              cpu: {{ .Values.frontend.resources.requests.cpu | quote }}
+              memory: {{ .Values.frontend.resources.requests.memory | quote }}
+              ephemeral-storage: {{ index .Values.frontend.resources.requests "ephemeral-storage" | quote }}
+            limits:
+              cpu: {{ .Values.frontend.resources.limits.cpu | quote }}
+              memory: {{ .Values.frontend.resources.limits.memory | quote }}
+              ephemeral-storage: {{ index .Values.frontend.resources.limits "ephemeral-storage" | quote }}
           startupProbe:
             httpGet:
               path: /health/live

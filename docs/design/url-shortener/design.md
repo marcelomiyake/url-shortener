@@ -21,6 +21,7 @@ Deployment packaging and Cassandra file ownership are described in the [Helm dep
 - [Background and problem statement](#background-and-problem-statement)
 - [1. Domain and invariants](#1-domain-and-invariants)
 - [2. Architecture](#2-architecture)
+  - [Service-level architecture](#service-level-architecture)
 - [3. API contract](#3-api-contract)
 - [Consistency, idempotency, and replay](#consistency-idempotency-and-replay)
 - [Security and privacy considerations](#security-and-privacy-considerations)
@@ -102,6 +103,36 @@ OpenDesign's Neutral Modern design handoff is in [`../../../url-shortener-fronte
 ### Architecture practice fit
 
 DDD and a small Clean Architecture boundary fit the Short Link domain: URL policy and deterministic code allocation are business rules, [`domain.rs`](../../../url-shortener-api/src/short_link/domain.rs) models them, [`service.rs`](../../../url-shortener-api/src/short_link/service.rs) coordinates use cases, and [`cassandra_repository.rs`](../../../url-shortener-api/src/infrastructure/cassandra_repository.rs) owns persistence. Keep Axum and Cassandra behind those existing boundaries; additional interfaces for each type would not improve the two current operations. Creation and resolution have different read/write paths, but they share one immutable mapping and uniqueness rule, so a second CQRS model or asynchronous projection would add consistency work without a current requirement. YAGNI, KISS, and DRY favor keeping the direct Cassandra lookup/LWT allocation path and one authoritative contract.
+
+### Service-level architecture
+
+#### `url-shortener-api`
+
+```mermaid
+flowchart LR
+  Create[POST /api/v1/links] --> Router[Axum router]
+  Router --> Policy[Validate and canonicalize HTTP(S) URL]
+  Policy --> Code[Hash canonical URL and choose Base62 code]
+  Code -->|INSERT IF NOT EXISTS at LOCAL_SERIAL| Cassandra[(Cassandra mapping table)]
+  Cassandra -->|created, same URL, or collision| Allocation[Reuse code or extend digest prefix]
+  Allocation --> Result[201 created, 200 duplicate, or 503]
+  Resolve[GET /{code}] --> Router
+  Router --> Check[Validate code and read mapping at LOCAL_QUORUM]
+  Check --> Cassandra
+  Cassandra -->|found, absent, or unavailable| Redirect[301 Location / 404 / 503]
+```
+
+#### `url-shortener-frontend`
+
+```mermaid
+flowchart LR
+  Visitor[Visitor browser] --> Vue[Vue form and result UI]
+  Vue -->|same-origin create and short-code paths| Nginx[Unprivileged NGINX static server and proxy]
+  Nginx -->|static assets| Visitor
+  Nginx -->|/api/* and /{code}| API[url-shortener-api ClusterIP Service]
+  API -->|create response or 301 redirect| Nginx
+  Nginx --> Vue
+```
 
 ## 3. API contract
 
@@ -220,11 +251,11 @@ Cassandra resource requests/limits and heap are sized for a local developer clus
 
 ### Resource budgets and Kubernetes practice
 
-Every pod template has CPU and memory requests and limits for each regular and init container. The concrete local values are maintained in [Kubernetes resource budgets](../../kubernetes-resources.md); they are local defaults, not measured consumption or production sizing. Measure representative workloads in the target environment, set requests for observed baseline needs and limits for acceptable bursts, then monitor CPU throttling, memory pressure, and OOM events and adjust deliberately.
+Every pod template has CPU, memory, and ephemeral-storage requests and limits for each workload container. The concrete local values are maintained in [Kubernetes resource budgets](../../kubernetes-resources.md); they are local defaults, not measured consumption or production sizing. Measure representative workloads in the target environment, set requests for observed baseline needs and limits for acceptable bursts, then monitor CPU throttling, memory pressure, ephemeral-storage use, and OOM events and adjust deliberately.
 
 ## Operational readiness
 
-Build and install through `./scripts/deploy-kind.sh` only after confirming the existing `kind-kind` context and `standard` StorageClass. Verify two frontend replicas, two API replicas, three Cassandra pods, and all three bound PVCs before use. Stop the port-forward and run `helm --kube-context kind-kind uninstall url-shortener --namespace url-shortener` to remove the application while retaining claims; namespace deletion removes the PVCs and local mappings. Per-container CPU/memory requests and limits are in [Kubernetes resource budgets](../../kubernetes-resources.md). Monitor Cassandra readiness, disk capacity, and resource throttling; local replica count is not HA.
+Build and install through `./scripts/deploy-kind.sh` only after confirming the existing `kind-kind` context and `standard` StorageClass. Verify two frontend replicas, two API replicas, three Cassandra pods, and all three bound PVCs before use. Stop the port-forward and run `helm --kube-context kind-kind uninstall url-shortener --namespace url-shortener` to remove the application while retaining claims; namespace deletion removes the PVCs and local mappings. Per-container CPU, memory, and ephemeral-storage requests and limits are in [Kubernetes resource budgets](../../kubernetes-resources.md). Monitor Cassandra readiness, disk capacity, and resource throttling; local replica count is not HA.
 
 ## 8. Automated verification
 
@@ -254,4 +285,4 @@ The selected local design is a stateless two-replica Rust API, a two-replica Vue
 - [Contract catalog](../../contracts/README.md) — owners, producers, consumers, and compatibility.
 - [OpenAPI contract](openapi.yaml) — authoritative HTTP schema.
 - [Helm chart guide](../../../deploy/helm/url-shortener/README.md) and [Helm deployment design](../helm-deployment/design.md).
-- [Kubernetes resource budgets](../../kubernetes-resources.md) — configured CPU/memory requests and limits.
+- [Kubernetes resource budgets](../../kubernetes-resources.md) — configured CPU, memory, and ephemeral-storage requests and limits.

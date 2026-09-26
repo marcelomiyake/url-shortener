@@ -69,7 +69,7 @@ The E2E flow creates and copies a link, verifies the redirect `Location` and cac
 
 ## SonarQube
 
-The API and frontend have separate SonarQube projects because they use different languages and ownership boundaries. [`sonar-project-api.properties`](sonar-project-api.properties) covers Rust, Kubernetes, and the API Dockerfile. [`sonar-project-frontend.properties`](sonar-project-frontend.properties) covers Vue, TypeScript, CSS, frontend unit tests, and browser tests. Run `scripts/sonar-scan.sh` to run Rust unit/integration tests and frontend unit tests with coverage, create the Clippy report, and submit both analyses. Run the Playwright E2E suite separately against the deployed frontend as described above. Provide separate project analysis tokens as `SONAR_API_TOKEN` and `SONAR_FRONTEND_TOKEN`; accept `SONAR_HOST_URL` or `SONAR_URL` for the server address. Keep tokens out of shell output and source control. Inspect each analysis with the configured SonarQube MCP. The local Community Build analyzes the default branch only.
+The monorepo is analyzed as the SonarQube Cloud project `marcelomiyake_url-shortener`, connected to GitHub with Automatic Analysis enabled. A push to the default branch or a pull request starts analysis automatically. Verify that SonarCloud analyzed the pushed revision, then inspect its full issue list and quality gate through the Cloud project or configured MCP. No local scanner script or token is needed. Local coverage tests remain separate evidence; Automatic Analysis does not import them.
 
 ## Local kind deployment
 
@@ -103,7 +103,7 @@ Stop the port-forward with Ctrl-C and uninstall the chart without deleting the n
 helm --kube-context kind-kind uninstall url-shortener --namespace url-shortener
 ```
 
-The chart retains Cassandra PVCs when its StatefulSet is removed. Deleting the namespace deletes those claims and the locally stored mappings. CPU and memory requests and limits are in [Kubernetes resource budgets](docs/kubernetes-resources.md).
+The chart retains Cassandra PVCs when its StatefulSet is removed. Deleting the namespace deletes those claims and the locally stored mappings. CPU, memory, and ephemeral-storage requests and limits are in [Kubernetes resource budgets](docs/kubernetes-resources.md).
 
 ## Screenshots
 

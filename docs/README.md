@@ -65,7 +65,7 @@ Use this index to find the repository overview, agent guidance, architecture, co
 
 - [docs/verification/README.md](verification/README.md) — Verification evidence index
 - [docs/verification/lighthouse.md](verification/lighthouse.md) — Lighthouse and SEO metadata check
-- [docs/verification/sonarqube.md](verification/sonarqube.md) — scan status and project-scoped credentials
+- [docs/verification/sonarqube.md](verification/sonarqube.md) — Cloud scanner configuration and historical local results
 - [docs/design/helm-deployment/evidence.md](design/helm-deployment/evidence.md) — Evidence record
 - [docs/design/url-shortener/evidence.md](design/url-shortener/evidence.md) — Evidence record
 - [docs/design/webmcp/evidence.md](design/webmcp/evidence.md) — Evidence record

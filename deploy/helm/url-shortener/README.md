@@ -31,7 +31,7 @@ Removing the Helm release retains the Cassandra PVCs through the StatefulSet ret
 
 ## Resource budgets and undeploy
 
-The API, frontend, and each Cassandra pod have CPU and memory requests and limits. See the per-pod values in the [Kubernetes resource budget](../../../docs/kubernetes-resources.md) and the chart's `values.yaml`. The Cassandra StatefulSet explicitly retains PVCs when deleted or scaled down. Remove the release with `helm uninstall url-shortener --namespace url-shortener`; deleting the namespace or retained PVCs removes mappings. See the [documentation index](../../../docs/README.md).
+The API, frontend, and each Cassandra pod have CPU, memory, and ephemeral-storage requests and limits. See the per-pod values in the [Kubernetes resource budget](../../../docs/kubernetes-resources.md) and the chart's `values.yaml`. The Cassandra StatefulSet explicitly retains PVCs when deleted or scaled down. Remove the release with `helm uninstall url-shortener --namespace url-shortener`; deleting the namespace or retained PVCs removes mappings. See the [documentation index](../../../docs/README.md).
 
 
 ## AI development disclaimer

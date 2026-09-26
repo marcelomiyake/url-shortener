@@ -47,7 +47,7 @@
 ## SonarQube status
 
 - The configured MCP can query projects `url-shortener-api` and `url-shortener-frontend`. Current server snapshots report quality gates `OK`, zero open/confirmed issues, zero bugs/vulnerabilities/code smells, and 0.0% aggregate duplication; the reported coverage values are 90.2% and 90.6%, respectively.
-- These are existing analyses, not scans of this worktree. SonarQube lists the `main` branch analyses at 2026-09-23 21:13:37 UTC (API) and 21:13:53 UTC (frontend), with recorded SCM revision `e241fef92eb7b8e71d4efc0ba40d52fec8ad187c`. No post-change scan was submitted because `SONAR_API_TOKEN` and `SONAR_FRONTEND_TOKEN` project-scoped scanner credentials were unavailable to `scripts/sonar-scan.sh`. Do not treat the existing gate status as validation of these Helm or source changes.
+- These are existing analyses, not scans of that worktree. SonarQube lists the `main` branch analyses at 2026-09-23 21:13:37 UTC (API) and 21:13:53 UTC (frontend), with recorded SCM revision `e241fef92eb7b8e71d4efc0ba40d52fec8ad187c`. The current GitHub-linked Cloud project uses Automatic Analysis; those prior local results do not validate subsequent changes.
 - MCP issue searches returned no open/confirmed findings. Item-level duplication and security-hotspot searches returned `Insufficient privileges` for both projects. The analysis requirement is incomplete until a fresh full scan runs and those findings can be reviewed.
 
 ## Not run

@@ -111,12 +111,12 @@ DDD and a small Clean Architecture boundary fit the Short Link domain: URL polic
 ```mermaid
 flowchart LR
   Create[POST /api/v1/links] --> Router[Axum router]
-  Router --> Policy[Validate and canonicalize HTTP(S) URL]
+  Router --> Policy["Validate and canonicalize HTTP(S) URL"]
   Policy --> Code[Hash canonical URL and choose Base62 code]
   Code -->|INSERT IF NOT EXISTS at LOCAL_SERIAL| Cassandra[(Cassandra mapping table)]
   Cassandra -->|created, same URL, or collision| Allocation[Reuse code or extend digest prefix]
   Allocation --> Result[201 created, 200 duplicate, or 503]
-  Resolve[GET /{code}] --> Router
+  Resolve["GET /{code}"] --> Router
   Router --> Check[Validate code and read mapping at LOCAL_QUORUM]
   Check --> Cassandra
   Cassandra -->|found, absent, or unavailable| Redirect[301 Location / 404 / 503]
@@ -129,7 +129,7 @@ flowchart LR
   Visitor[Visitor browser] --> Vue[Vue form and result UI]
   Vue -->|same-origin create and short-code paths| Nginx[Unprivileged NGINX static server and proxy]
   Nginx -->|static assets| Visitor
-  Nginx -->|/api/* and /{code}| API[url-shortener-api ClusterIP Service]
+  Nginx -->|API and short-code requests| API[url-shortener-api ClusterIP Service]
   API -->|create response or 301 redirect| Nginx
   Nginx --> Vue
 ```

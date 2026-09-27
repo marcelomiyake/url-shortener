@@ -1,0 +1,13 @@
+.git
+.gitignore
+.sonarlint
+**/target
+**/node_modules
+**/coverage
+**/dist
+**/playwright-report
+**/test-results
+docs
+*.log
+.env
+.env.*

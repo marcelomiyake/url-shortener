@@ -1,0 +1,76 @@
+name: SonarQube Cloud per-microservice analysis
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sonar-microservices-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: SonarCloud - ${{ matrix.component }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: url-shortener-api
+            service: url-shortener-api
+            project_key: marcelomiyake_url-shortener_url-shortener-api
+            coverage_exclusions: "**/src/main.rs"
+    env:
+      CASSANDRA_CONTACT_POINTS: 127.0.0.1:9042
+      CASSANDRA_KEYSPACE: short_links_ci_${{ github.run_id }}
+      CASSANDRA_LOCAL_DC: datacenter1
+      CASSANDRA_REPLICATION_FACTOR: "1"
+    services:
+      cassandra:
+        image: cassandra:5.0
+        env:
+          CASSANDRA_CLUSTER_NAME: url-shortener-tests
+          CASSANDRA_DC: datacenter1
+          CASSANDRA_RACK: rack1
+          CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+        ports: [9042:9042]
+        options: >-
+          --health-cmd "cqlsh -e 'SELECT release_version FROM system.local'"
+          --health-interval 15s --health-timeout 10s --health-retries 20
+          --health-start-period 90s
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+      - name: Install Rust coverage tool
+        run: cargo install cargo-llvm-cov --version 0.9.1 --locked
+      - name: Install SonarScanner for Cargo
+        run: cargo install cargo-sonar-scanner --version 1.0.0 --locked
+      - name: Generate ${{ matrix.component }} coverage
+        working-directory: ${{ matrix.service }}
+        run: |
+          mkdir -p target/coverage
+          cargo llvm-cov --lcov --output-path target/coverage/lcov.info -- --test-threads=1
+      - name: Analyze ${{ matrix.component }}
+        working-directory: ${{ matrix.service }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          PROJECT_KEY: ${{ matrix.project_key }}
+          COVERAGE_EXCLUSIONS: ${{ matrix.coverage_exclusions }}
+        run: |
+          scanner_args=(
+            --sonar-organization marcelomiyake
+            --sonar-project-key "$PROJECT_KEY"
+            -Dsonar.rust.lcov.reportPaths=target/coverage/lcov.info
+          )
+          if [[ -n "$COVERAGE_EXCLUSIONS" ]]; then
+            scanner_args+=("-Dsonar.coverage.exclusions=$COVERAGE_EXCLUSIONS")
+          fi
+          cargo sonar-scanner "${scanner_args[@]}"

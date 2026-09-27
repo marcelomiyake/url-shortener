@@ -1,0 +1,136 @@
+openapi: 3.1.0
+info:
+  title: URL Shortener API
+  version: 0.2.0
+  description: Same-origin API for creating canonical, immutable short links and resolving short codes.
+paths:
+  /api/v1/links:
+    post:
+      operationId: createShortLink
+      summary: Create or reuse a short link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [destination_url]
+              properties:
+                destination_url:
+                  type: string
+                  description: HTTP(S) URL; UTF-8 input and canonical form may each be at most 2048 bytes. Embedded credentials are rejected.
+                  maxLength: 2048
+      responses:
+        '201':
+          description: A new short link was durably created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShortLink'
+        '200':
+          description: The canonical destination already had a short link; its existing mapping is returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShortLink'
+        '400':
+          description: Malformed JSON request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request body exceeds the configured limit.
+        '422':
+          description: Destination URL violates the URL policy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: The mapping could not be read or durably stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /{code}:
+    get:
+      operationId: resolveShortCode
+      summary: Permanently redirect to a saved destination
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 12
+            maxLength: 43
+            pattern: '^[0-9A-Za-z]{12,43}$'
+      responses:
+        '301':
+          description: Short code resolved. Redirect is cacheable for one hour.
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+                format: uri
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                example: public, max-age=3600
+        '404':
+          description: Short code is unknown or malformed.
+        '503':
+          description: Mapping storage is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /health/live:
+    get:
+      operationId: liveness
+      summary: Check that the API process is alive.
+      responses:
+        '204':
+          description: Process is alive.
+  /health/ready:
+    get:
+      operationId: readiness
+      summary: Check that the API can read from Cassandra quorum.
+      responses:
+        '204':
+          description: Cassandra quorum is available.
+        '503':
+          description: Cassandra quorum is unavailable.
+components:
+  schemas:
+    ShortLink:
+      type: object
+      additionalProperties: false
+      required: [code, short_path]
+      properties:
+        code:
+          type: string
+          minLength: 12
+          maxLength: 43
+          pattern: '^[0-9A-Za-z]{12,43}$'
+        short_path:
+          type: string
+          pattern: '^/[0-9A-Za-z]{12,43}$'
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string

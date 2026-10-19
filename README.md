@@ -77,8 +77,6 @@ The chart at [`deploy/helm/url-shortener`](deploy/helm/url-shortener) owns the f
 
 Cassandra-owned schema is maintained in [`database/cassandra`](database/cassandra); Cassandra deployment settings live under `cassandra:` in the Helm chart values. The API loads the schema at build time, so its Docker image must be built with the repository root as context. An unused legacy relational SQL schema was removed; it was not a Cassandra migration or data backup and contained no mapping rows to restore. Current mappings are unavailable after namespace deletion; the deploy command creates fresh Cassandra volumes and does not restore previous mappings.
 
-**Current local state (2026-09-23):** the `url-shortener` namespace was deleted to reduce host resource use. Read-only inspection confirmed the namespace is absent and there are no PVCs or PVs in the cluster. The application is not currently deployed, and its previous mappings are unavailable from the cluster. No external backup or recovery copy has been verified. The deployment script can recreate the application with fresh Cassandra volumes; recover old mappings only from a separately verified source or backup.
-
 ```sh
 # Build images, verify the existing kind target, load them into kind, and install/upgrade the Helm release.
 ./scripts/deploy-kind.sh

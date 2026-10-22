@@ -1,0 +1,11 @@
+{
+  "policy": "Use a Sonar project for each real component; retain existing aggregate history.",
+  "projects": [
+    {
+      "component": "url-shortener-frontend",
+      "directory": "url-shortener-frontend",
+      "key": "marcelomiyake_url-shortener_url-shortener-frontend",
+      "kind": "web"
+    }
+  ]
+}

@@ -15,6 +15,7 @@
 - [Kubernetes and local `kind`](#kubernetes-and-local-kind)
 - [SonarQube quality and duplication gate](#sonarqube-quality-and-duplication-gate)
 - [Validation and handoff](#validation-and-handoff)
+- [Releases](#releases)
 
 ## Project intent
 
@@ -145,3 +146,14 @@ For browser-agent support, use WebMCP only as progressive frontend enhancement. 
 - Use commands documented in the repository and relevant manifests. If documentation is missing, inspect the available scripts and tool configuration before selecting checks; add/update the canonical commands as part of scaffolding rather than leaving guessed commands here.
 - Do not add or run tests unless the user asks for testing/verification or the requested implementation requires it. When checks are requested, report exact commands, outcomes, and limits; distinguish structural validation, automated tests, local cluster checks, and human design review.
 - At handoff, summarize changed files, evidence and decisions, actual validation results, and unresolved assumptions with the next decision or owner needed. Do not claim approval, readiness, or deployment without evidence.
+
+## Releases
+
+`.github/workflows/release.yml` runs [release-please](https://github.com/googleapis/release-please) on every push to `main`. From the Conventional Commits merged since the last tag, it keeps one release pull request open, titled `chore: release X.Y.Z`:
+
+- `fix`, `perf` and `revert` make a patch release, `feat` a minor release, and a breaking change (`!`) a major release. The other types release nothing on their own and stay out of the changelog.
+- It writes the version to `version.txt` and adds the release to `CHANGELOG.md`.
+- Merging it tags `vX.Y.Z` and publishes the GitHub release.
+- GitHub runs no workflow on that pull request, because the workflow's own token opened it. The other workflows run on `main` once it merges.
+
+Never change the version or `CHANGELOG.md` by hand. `.release-please-manifest.json` holds the last released version, and `release-please-config.json` the settings. To force a version, add a `Release-As: X.Y.Z` footer to a commit.

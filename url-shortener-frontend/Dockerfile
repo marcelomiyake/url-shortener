@@ -1,4 +1,4 @@
-FROM node:24.21.0-bookworm-slim AS frontend-build
+FROM node:26.13.1-bookworm-slim AS frontend-build
 WORKDIR /workspace/frontend
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
